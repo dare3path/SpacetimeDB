@@ -5711,6 +5711,7 @@ dependencies = [
  "hex",
  "insta",
  "itertools 0.12.1",
+ "native-tls",
  "proptest",
  "proptest-derive",
  "ron",
@@ -5722,6 +5723,7 @@ dependencies = [
  "spacetimedb-primitives",
  "spacetimedb-sats",
  "thiserror 1.0.69",
+ "tokio",
 ]
 
 [[package]]
@@ -5858,6 +5860,7 @@ dependencies = [
 name = "spacetimedb-sdk"
 version = "1.1.1"
 dependencies = [
+ "anyhow",
  "anymap",
  "base64 0.21.7",
  "brotli",
