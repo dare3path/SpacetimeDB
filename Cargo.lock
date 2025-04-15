@@ -5949,6 +5949,7 @@ dependencies = [
  "prometheus",
  "ring",
  "rustls",
+ "rustls-pemfile 2.2.0",
  "scopeguard",
  "serde_json",
  "sled",
