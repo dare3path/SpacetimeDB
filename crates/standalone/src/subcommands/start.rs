@@ -339,6 +339,7 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
         //use openssl::sha::{Sha256, Digest};
 
         if trust_system {
+            eprintln!("Trusting system root store for verifying client certs.");
             //unusual to trust system store with mTLS
             //load system trust store certs
             let cr:rustls_native_certs::CertificateResult = rustls_native_certs::load_native_certs();
@@ -364,6 +365,8 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
 
                 roots.add(cert)?;
             }
+        } else {
+            eprintln!("Not trusting system root store for verifying client certs.");
         }
 
         // Load custom client trust certificates
