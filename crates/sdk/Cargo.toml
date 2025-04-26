@@ -32,12 +32,14 @@ tokio-tungstenite.workspace = true
 #rustls = "0.23"
 rustls.workspace = true
 #rustls-pemfile = "2.2.0"
-rustls-pemfile.workspace = true
 #native-tls = "0.2"  # Explicitly add for Connector::NativeTls
 native-tls.workspace = true
 #anyhow="1.0"
 anyhow.workspace=true
 clap.workspace=true
+rustls-pemfile.workspace = true
+#This pki-types crate is actually a dep of pemfile above, but we want a feature enabled, so:
+rustls-pki-types.workspace=true #needed here, to enable its 'trace_drop_and_zeroize' feature
 
 [dev-dependencies]
 # for quickstart-chat and cursive-chat examples

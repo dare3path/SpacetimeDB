@@ -1,3 +1,4 @@
+use zeroize::Zeroize;
 use std::sync::Arc;
 use std::path::Path;
 use std::path::PathBuf;
@@ -148,22 +149,58 @@ async fn load_certs(file_path: &Path, expected_num: Option<usize>) -> anyhow::Re
 //    }
 }
 
+#[allow(dead_code)] // because it's for compile-time check only.
+const fn assert_zeroize<T: zeroize::Zeroize + zeroize::ZeroizeOnDrop>() {}
+const _: () = {
+    assert_zeroize::<PrivatePkcs8KeyDer<'static>>();
+    assert_zeroize::<PrivateKeyDer<'static>>();
+};
+#[test]
+fn test_zeroize_bounds() {
+    fn assert_zeroize<T: zeroize::Zeroize + zeroize::ZeroizeOnDrop>(_t: T) {}
+    // Use a dummy type to test the bound
+    let wtw=PrivatePkcs8KeyDer::from_vec(vec![1, 2, 3]);
+    let dummy_key = PrivateKeyDer::Pkcs8(wtw);
+    assert_zeroize(wtw);
+    assert_zeroize(dummy_key);
+}
+//#[test]
+//fn test_zeroize_private_key() {
+//    let mut key = PrivatePkcs8KeyDer(vec![1, 2, 3]);
+//    key.zeroize(); // Should compile if Zeroize is implemented
+//    assert_eq!(key.0, vec![0, 0, 0]); // Verify zeroization
+//}
+
 /// Loads a private key from a PEM file.
 async fn load_private_key(file_path: &Path) -> anyhow::Result<PrivateKeyDer<'static>> {
-    let data = read_file_limited(file_path).await?;
-    let keys: Vec<PrivatePkcs8KeyDer<'static>> = rustls_pemfile::pkcs8_private_keys(&mut std::io::Cursor::new(data))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| anyhow::anyhow!("Failed to parse private keys from {}: {:?}", file_path.display(), e))?;
-//    if keys.len() < 1 {
-//        Err(anyhow::anyhow!("No private key(s) found in file {}", file_path.display())),
-//    } else {
-//        Ok(keys)
-//    }
-    match keys.len() {
-        0 => Err(anyhow::anyhow!("No private key found in file {}", file_path.display())),
-        1 => Ok(PrivateKeyDer::Pkcs8(keys.into_iter().next().unwrap())),
-        _ => Err(anyhow::anyhow!("Multiple private keys found in file {}; only one private key is expected.", file_path.display())),
-    }
+//    fn assert_zeroize<T: Zeroize>() {}
+//    assert_zeroize::<PrivatePkcs8KeyDer<'static>>(); // Fails if Zeroize not implemented
+//    assert_zeroize::<PrivateKeyDer<'static>>();
+
+    let mut data = read_file_limited(file_path).await?;
+    let result = {
+        let mut cursor = std::io::Cursor::new(&data); // Borrow data
+        let mut keys: Vec<PrivatePkcs8KeyDer<'static>> = rustls_pemfile::pkcs8_private_keys(
+            &mut cursor)
+//            &mut std::io::Cursor::new(data))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| anyhow::anyhow!("Failed to parse private keys from {}: {:?}", file_path.display(), e))?;
+        //let result = 
+        match keys.len() {
+            0 => Err(anyhow::anyhow!("No private key found in file {}", file_path.display())),
+            //1 => Ok(PrivateKeyDer::Pkcs8(keys.into_iter().next().unwrap())),
+            1 => Ok(PrivateKeyDer::Pkcs8(keys.pop().unwrap())),
+            _ => Err(anyhow::anyhow!("Multiple private keys found in file {}; only one private key is expected.", file_path.display())),
+        }
+        //;
+//        // Zeroize all keys in the vector (handles multiple keys case if logic changes)
+//        for key in keys.iter_mut() {
+//            key.0.zeroize();
+//        }
+//        result
+    };
+    data.zeroize();
+    result
 }
 
 /// Creates a custom CryptoProvider with specific cipher suites.
@@ -324,6 +361,25 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
         // Load certificate and private key with file size limit
         let cert_chain = load_certs(cert_path,Some(1)).await?;
         let private_key = load_private_key(key_path).await?;
+        //scopeguard::defer! { private_key.zeroize(); }//can't it's moving it
+        {
+            let mut _cloned_pk=private_key.clone_key();
+        }
+//        scopeguard::defer! {
+//            eprintln!("!!! in defer!");
+//            cloned_pk.zeroize();
+//            eprintln!("!!! at end of defer!");
+//        }//can't it's moving it
+//        struct LoggedKey(PrivateKeyDer<'static>);
+//        impl Drop for LoggedKey {
+//            fn drop(&mut self) {
+//                eprintln!("Dropping PrivateKeyDer");
+//                self.0.zeroize(); // Explicitly zero for clarity
+//            }
+//        }
+//        {
+//            let _foo=LoggedKey(private_key.clone_key());
+//        } // well yeah the wrapper gets dropped, obviously.
 
         // XXX: No revocation status is checked, so a valid-but-revoked cert would pass. (because
         // code doesn't use .with_crls() )
@@ -339,7 +395,7 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
         //use openssl::sha::{Sha256, Digest};
 
         if trust_system {
-            eprintln!("Trusting system root store for verifying client certs.");
+            eprintln!("Was asked to trust the system root store for verifying client certs.");
             //unusual to trust system store with mTLS
             //load system trust store certs
             let cr:rustls_native_certs::CertificateResult = rustls_native_certs::load_native_certs();
@@ -366,7 +422,7 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
                 roots.add(cert)?;
             }
         } else {
-            eprintln!("Not trusting system root store for verifying client certs.");
+            eprintln!("Was asked to not trust the system root store for verifying client certs.");
         }
 
         // Load custom client trust certificates
@@ -392,11 +448,15 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
         }
 
         // Configure client authentication (mTLS)
-        let client_auth: Arc<dyn rustls::server::danger::ClientCertVerifier> = if args.get_one::<PathBuf>("client-trust-cert").is_some() || trust_system {
+        // FIXME: check if this 'danger' thing is as good as using
+        // crate::ConfigBuilder::with_client_auth_cert and .with_no_client_auth
+        let client_auth: Arc<dyn rustls::server::danger::ClientCertVerifier> = if args.get_one::<PathBuf>("client-trust-cert").is_some() && trust_system {
+            eprintln!("Trusting system root store for verifying client certs.");
             rustls::server::WebPkiClientVerifier::builder(roots.into()) //Arc::new(roots))
                 .build()
                 .map_err(|e| anyhow::anyhow!("Failed to build client verifier: {}", e))?
         } else {
+            eprintln!("Not trusting system root store for verifying client certs.");
             rustls::server::WebPkiClientVerifier::no_client_auth()
         };
 
@@ -419,9 +479,17 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
             "Starting SpacetimeDB with SSL on {}.",
             addr,
         );
-        axum_server::bind_rustls(addr, tls_config)
-            .serve(service.into_make_service())
-            .await?;
+//        axum_server::bind_rustls(addr, tls_config)
+//            .serve(service.into_make_service())
+//            .await?;
+        // Run server in a task
+        let server = tokio::spawn(axum_server::bind_rustls(addr, tls_config).serve(service.into_make_service()));
+        // Wait for Ctrl+C
+        tokio::signal::ctrl_c().await?;
+        server.abort(); // Stop the server
+        //sanitize_private_key(&mut private_key); // Sanitize the key
+        //private_key.zeroize();//not needed(&can't do due to moved, above!) because rustls-pki-types crate implements (on drop) zeroize::Zeroize
+        eprintln!("\n!!! server's done.");
     } else {
         log::debug!("Starting SpacetimeDB without any ssl (so it's plaintext) listening on {}", addr);
         axum_server::bind(addr)

@@ -76,10 +76,12 @@ webbrowser.workspace = true
 clap-markdown.workspace = true
 #native-tls = "0.2"
 native-tls.workspace=true
-rustls-pemfile.workspace=true
 x509-parser.workspace=true
 sha2.workspace=true
 #hyper.workspace=true
+rustls-pemfile.workspace=true
+#This pki-types crate is actually a dep of pemfile above, but we want a feature enabled, so:
+rustls-pki-types.workspace=true #needed here, to enable its 'trace_drop_and_zeroize' feature
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = { workspace = true }

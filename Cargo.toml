@@ -188,6 +188,7 @@ http = "1.0"
 humantime = "2.1.0"
 hyper = "1.6"
 hyper-util = { version = "0.1.11", features = ["tokio"] }
+zeroize = { version="1.8.1" }
 imara-diff = "0.1.3"
 indexmap = "2.0.0"
 indicatif = "0.17"
@@ -299,6 +300,28 @@ tikv-jemalloc-ctl = { version = "0.6.0", features = ["stats"] }
 jemalloc_pprof = { version = "0.7", features = ["symbolize", "flamegraph"] }
 zstd-framed = { version = "0.1.1", features = ["tokio"] }
 
+
+#uncomment this to disable the feature: (and comment the next one)
+#rustls-pki-types = { version = "1.11" }
+#XXX: doing this here: (comment the above, uncomment this next)
+rustls-pki-types = { version = "1.11", features = ["trace_drop_and_zeroize"] }
+#and then in things like ./crates/standalone/Cargo.toml doing:
+#rustls-pki-types.workspace=true
+#will make any dep's use of this pki-types crate enable this 'trace_drop_and_zeroize' feature,
+#so it's like it's enabled globally for all Cargo.toml(s) that use this workspace's pki-types (as shown 2 lines above).
+#but this also requires the [patch.crates-io] section below in-here! because only that modded fork of pki-types has that exact trace_drop_and_zeroize feature.
+#sample output after this is done:
+#$ cargo tree -f "{p} {f}" | grep pki-types
+#│   │   └── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) alloc,default,std,trace_drop_and_zeroize
+#    │   ├── axum-server v0.7.2 arc-swap,default,rustls,rustls-pemfile,rustls-pki-types,tls-rustls,tls-rustls-no-provider,tokio-rustls
+#    │   │   │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) alloc,default,std,trace_drop_and_zeroize (*)
+#    │   │   │   │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) alloc,default,std,trace_drop_and_zeroize (*)
+#    │   │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) alloc,default,std,trace_drop_and_zeroize (*)
+#    │   │   │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) alloc,default,std,trace_drop_and_zeroize (*)
+#    │   │   └── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) alloc,default,std,trace_drop_and_zeroize (*)
+#    │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) alloc,default,std,trace_drop_and_zeroize (*)
+#
+
 # Vendor the openssl we rely on, rather than depend on a
 # potentially very old system version.
 openssl = { version = "0.10", features = ["vendored"] }
@@ -330,4 +353,27 @@ features = [
   "broadcast",
   "ondemand",
 ]
+
+[patch.crates-io]
+#A version that has zeroize, because 1.12.0 or so, isn't yet released.
+#Patched to have zeroize() method but doesn't zeroize on drop(this isn't enough for our uses!):
+#rustls-pki-types = { git = "https://github.com/rustls/pki-types.git", rev = "b59e08d49911b10c423d25bd9040cfbe5a6042ff" }
+
+#Patched to zeroize on drop(good for us):
+rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" }
+#^ it's indirectly used though.
+
+# a rustls that uses same pki-types patch.crates-io section from above and also enables pki-types' feature trace_drop_and_zeroize
+#rustls = { path = "/home/user/SOURCE/github/rustls/rustls" }
+#so rustls's Cargo.toml is modded to look like this:
+## pki-types = { package = "rustls-pki-types", version = "1.11", features = ["alloc","trace_drop_and_zeroize"] }
+##...
+## ppatch.crates-io]
+## rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" } #patched with ./zeroize_on_drop.patch
+#XXX: this ^ (rustls hack) isn't needed if using the above inclusion of rustls-pki-types as dep here and .workspace=true in any Cargo.toml that has deps that use it.
+
+#patched to not obscure connection errors behind ChannelClosed:
+hyper-util = { path ="/home/user/SOURCE/my/channelclosed.reqwest/hyper-util" }
+
+#The current branch(TLS+mTLS) which added these changes to spacetimedb is also available as patch in: https://github.com/dare3path/spacetimedb-tls-patch
 

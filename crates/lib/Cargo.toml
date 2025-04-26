@@ -51,9 +51,11 @@ tokio.workspace = true #this "full" tokio causes 'mio' to fail to wasm compile s
 #native-tls = "0.2"
 native-tls.workspace=true
 hyper.workspace=true
-reqwest.workspace=true
 openssl.workspace=true
 clap.workspace = true
+reqwest.workspace=true
+#This pki-types crate is actually an indirect(aka transitive) dep of reqwest above, but we want a feature enabled, so:
+rustls-pki-types.workspace=true #needed here, to enable its 'trace_drop_and_zeroize' feature
 
 # For the 'proptest' feature.
 proptest = { workspace = true, optional = true }

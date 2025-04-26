@@ -2584,7 +2584,7 @@ dependencies = [
 
 [[package]]
 name = "hyper-util"
-version = "0.1.12"
+version = "0.1.11"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -4811,8 +4811,9 @@ dependencies = [
 [[package]]
 name = "rustls-pki-types"
 version = "1.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "917ce264624a4b4db1c364dcc35bfca9ded014d0a958cd47ad3e960e988ea51c"
+dependencies = [
+ "zeroize",
+]
 
 [[package]]
 name = "rustls-webpki"
@@ -5421,6 +5422,7 @@ dependencies = [
  "regex",
  "reqwest 0.12.9",
  "rustls-pemfile 2.2.0",
+ "rustls-pki-types",
  "rustyline",
  "serde",
  "serde_json",
@@ -5817,6 +5819,7 @@ dependencies = [
  "proptest-derive",
  "reqwest 0.12.9",
  "ron",
+ "rustls-pki-types",
  "serde",
  "serde_json",
  "spacetimedb-bindings-macro",
@@ -5981,6 +5984,7 @@ dependencies = [
  "rand 0.9.0",
  "rustls",
  "rustls-pemfile 2.2.0",
+ "rustls-pki-types",
  "spacetimedb-client-api-messages",
  "spacetimedb-data-structures",
  "spacetimedb-lib",
@@ -6053,6 +6057,7 @@ dependencies = [
  "rustls",
  "rustls-native-certs",
  "rustls-pemfile 2.2.0",
+ "rustls-pki-types",
  "scopeguard",
  "serde_json",
  "sha2",
@@ -6073,6 +6078,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "x509-parser",
+ "zeroize",
 ]
 
 [[package]]

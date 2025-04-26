@@ -38,6 +38,7 @@ axum-server.workspace=true
 rustls-native-certs.workspace=true
 x509-parser.workspace=true
 sha2.workspace=true
+zeroize.workspace=true
 
 #ring = "0.17"  # explicitly add this for the CryptoProvider, even tho it's included transitively.
 ring.workspace=true
@@ -45,6 +46,8 @@ ring.workspace=true
 rustls.workspace=true
 #rustls-pemfile = "2.2"
 rustls-pemfile.workspace=true
+#This pki-types crate is actually a dep of pemfile above, but we want a feature enabled, so:
+rustls-pki-types.workspace=true #needed here, to enable its 'trace_drop_and_zeroize' feature
 
 clap = { workspace = true, features = ["derive", "string"] }
 dirs.workspace = true

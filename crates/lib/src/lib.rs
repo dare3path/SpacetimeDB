@@ -579,38 +579,6 @@ pub fn client_no_trust_system_root_store() -> clap::Arg {
         .help("Use empty trust store for client authentication (default), requires --client-trust-cert to validate client certs somehow.")
 }
 
-///// Asynchronously reads a file with a maximum size limit of 1 MiB.
-//pub async fn read_file_limited(path: &std::path::Path) -> anyhow::Result<Vec<u8>> {
-//    const MAX_SIZE: usize = 1_048_576; // 1 MiB
-//
-//    let file = tokio::fs::File::open(path)
-//        .await
-//        .context(format!("Failed to open file {}", path.display()))?;
-//        //.map_err(|e| anyhow::anyhow!("Failed to open file {}: {}", path.display(), e))?;
-//    let metadata = file
-//        .metadata()
-//        .await
-//        .context(format!("Failed to read metadata for {}", path.display()))?;
-//        //.map_err(|e| anyhow::anyhow!("Failed to read metadata for {}: {}", path.display(), e))?;
-//
-//    if metadata.len() > MAX_SIZE as u64 {
-//        return Err(anyhow::anyhow!(
-//            "File {} exceeds maximum size of {} bytes",
-//            path.display(),
-//            MAX_SIZE
-//        ));
-//    }
-//
-//    let mut reader = tokio::io::BufReader::new(file);
-//    let mut data = Vec::with_capacity(metadata.len() as usize);
-//    reader
-//        .read_to_end(&mut data)
-//        .await
-//        .context(format!("Failed to read(happens after open) file {}", path.display()))?;
-//        //.map_err(|e| anyhow::anyhow!("Failed to read file {}: {}", path.display(), e))?;
-//
-//    Ok(data)
-//}
 /// Asynchronously reads a file with a maximum size limit of 1 MiB.
 /// Files of 1 MiB or larger will fail; files under 1 MiB are allowed.
 /// This should avoid unresponsive system(DOS-ing) until OOM kicks in  if you do /dev/zero as the path.
@@ -620,7 +588,7 @@ pub async fn read_file_limited(path: &std::path::Path) -> anyhow::Result<Vec<u8>
     const MAX_SIZE: u64 = 1_048_576; // 1 MiB
 
     // it's explicitly opened as read only:
-    let file = tokio::fs::OpenOptions::new()
+    let file: tokio::fs::File = tokio::fs::OpenOptions::new()
         .read(true)
         .write(false)
         .open(path)
@@ -642,11 +610,21 @@ pub async fn read_file_limited(path: &std::path::Path) -> anyhow::Result<Vec<u8>
         ));
     }
 
-    let mut reader = tokio::io::BufReader::new(file).take(MAX_SIZE);
+    // Limit reads to MAX_SIZE
+
+    //let mut reader = tokio::io::BufReader::with_capacity(MAX_SIZE as usize, file).take(MAX_SIZE);
+
+    // No Stack Buffer: tokio::fs::File uses kernel buffers, which are less likely to persist in user-space memory compared to BufReader’s stack buffer.
+    // "No Buffer: read_to_end writes directly into data, bypassing user-space buffers. The OS kernel may use its own buffers, but these are managed by the kernel and not accessible to your process." - grok 3
+    // "The tokio source for read_to_end (in tokio::io::util::async_read_ext) shows it reads in
+    // chunks (default 64 KiB) directly into the provided Vec"
+    let mut reader = file.take(MAX_SIZE);
     //allocs 1MiB for any file size, once.
     //XXX: this is overkill for normal certs which are like 2KiB, or CA cert chains 250KiB+-
-    //if memory's a problem, just Vec::new() here instead.
+    //if memory's a problem, just Vec::new() here instead, or with 2048 capacity.
     let mut data = Vec::with_capacity(MAX_SIZE as usize);
+    // "This method is allowed to allocate for more elements than capacity"
+    assert!(data.capacity() >= MAX_SIZE as usize);
 
     reader
         .read_to_end(&mut data)
