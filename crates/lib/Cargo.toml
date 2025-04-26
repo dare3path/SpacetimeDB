@@ -56,6 +56,7 @@ clap.workspace = true
 reqwest.workspace=true
 #This pki-types crate is actually an indirect(aka transitive) dep of reqwest above, but we want a feature enabled, so:
 rustls-pki-types.workspace=true #needed here, to enable its 'trace_drop_and_zeroize' feature
+#rustls-pki-types = { version = "1.11", features = ["trace_drop_and_zeroize"] }
 
 # For the 'proptest' feature.
 proptest = { workspace = true, optional = true }
@@ -71,3 +72,33 @@ ron.workspace = true
 # Also as dev-dependencies for use in _this_ crate's tests.
 proptest.workspace = true
 proptest-derive.workspace = true
+
+##no effect if here:
+#[patch.crates-io]
+##A version that has zeroize, because 1.12.0 or so, isn't yet released.
+##Patched to have zeroize() method but doesn't zeroize on drop(this isn't enough for our uses!):
+##rustls-pki-types = { git = "https://github.com/rustls/pki-types.git", rev = "b59e08d49911b10c423d25bd9040cfbe5a6042ff" }
+#
+##Patched to zeroize on drop(good for us):
+#rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" }
+##^ it's indirectly used though.
+#
+## a rustls that uses same pki-types patch.crates-io section from above and also enables pki-types' feature trace_drop_and_zeroize
+##rustls = { path = "/home/user/SOURCE/github/rustls/rustls" }
+##so rustls's Cargo.toml is modded to look like this:
+### pki-types = { package = "rustls-pki-types", version = "1.11", features = ["alloc","trace_drop_and_zeroize"] }
+###...
+### ppatch.crates-io]
+### rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" } #patched with ./zeroize_on_drop.patch
+##XXX: this ^ (rustls hack) isn't needed if using the above inclusion of rustls-pki-types as dep here and .workspace=true in any Cargo.toml that has deps that use it.
+#
+##patched to not obscure connection errors behind ChannelClosed:
+#hyper-util = { path ="/home/user/SOURCE/my/channelclosed.reqwest/hyper-util" }
+#
+##The current branch(TLS+mTLS) which added these changes to spacetimedb is also available as patch in: https://github.com/dare3path/spacetimedb-tls-patch
+#
+
+##no effect, if here or in root dir aka workspace Cargo.toml
+#[patch.crates-io]
+#rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" }
+#hyper-util = { path ="/home/user/SOURCE/my/channelclosed.reqwest/hyper-util" }

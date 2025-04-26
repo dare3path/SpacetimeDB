@@ -304,7 +304,8 @@ zstd-framed = { version = "0.1.1", features = ["tokio"] }
 #uncomment this to disable the feature: (and comment the next one)
 #rustls-pki-types = { version = "1.11" }
 #XXX: doing this here: (comment the above, uncomment this next)
-rustls-pki-types = { version = "1.11", features = ["trace_drop_and_zeroize"] }
+rustls-pki-types = { version = "1.11.0", features = ["trace_drop_and_zeroize"] }
+#rustls-pki-types = { path= "/home/user/SOURCE/github/modified_forks/pki-types", features = ["trace_drop_and_zeroize"] } #don't use this path= way, because it compiles external client/server projects but they're incomplete, unless u add the patch section to them too.
 #and then in things like ./crates/standalone/Cargo.toml doing:
 #rustls-pki-types.workspace=true
 #will make any dep's use of this pki-types crate enable this 'trace_drop_and_zeroize' feature,
@@ -354,6 +355,22 @@ features = [
   "ondemand",
 ]
 
+#XXX: caveat: this patch section must exist in client/server external repos, even tho it works for those within this repo, in ./crates/sdk/... otherwise you'll get these errors:
+#/home/user/SOURCE/my/quickstart-chat/client
+#$ cargo build
+#    Updating crates.io index
+#error: failed to select a version for `rustls-pki-types`.
+#    ... required by package `spacetimedb-lib v1.1.1 (/home/user/SOURCE/SpacetimeDB/crates/lib)`
+#    ... which satisfies path dependency `spacetimedb-lib` (locked to 1.1.1) of package `spacetimedb-sdk v1.1.1 (/home/user/SOURCE/SpacetimeDB/crates/sdk)`
+#    ... which satisfies path dependency `spacetimedb-sdk` (locked to 1.1.1) of package `client v0.1.0 (/home/user/SOURCE/my/quickstart-chat/client)`
+#versions that meet the requirements `^1.11` are: 1.11.0
+#
+#the package `spacetimedb-lib` depends on `rustls-pki-types`, with features: `trace_drop_and_zeroize` but `rustls-pki-types` does not have these features.
+#
+#
+#failed to select a version for `rustls-pki-types` which could resolve this conflict
+#
+#"The core problem is that the [patch.crates-io] section in the SpacetimeDB workspace’s root Cargo.toml (at /home/user/SOURCE/SpacetimeDB/Cargo.toml) doesn’t apply to the quickstart-chat projects (server and client) because they are in a separate workspace or standalone Cargo.toml. This causes the rustls-pki-types dependency to resolve to the upstream v1.11.0, which lacks trace_drop_and_zeroize, resulting in the compile error(from above)"
 [patch.crates-io]
 #A version that has zeroize, because 1.12.0 or so, isn't yet released.
 #Patched to have zeroize() method but doesn't zeroize on drop(this isn't enough for our uses!):
@@ -362,6 +379,33 @@ features = [
 #Patched to zeroize on drop(good for us):
 rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" }
 #^ it's indirectly used though.
+#Without this here in patch section(ie. in case i used path= directly in the deps above, but none here in patch section), then not all deps will use it, like:
+#/home/user/SOURCE/SpacetimeDB
+#$ cargo tree|grep -i pki
+#│   │   └── rustls-pki-types v1.11.0
+#├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types)
+#│       ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#    │   │   │   ├── rustls-pki-types v1.11.0
+#    │   │   │   ├── rustls-webpki v0.103.1
+#    │   │   │   │   ├── rustls-pki-types v1.11.0
+#    │   │   ├── rustls-pki-types v1.11.0
+#    │   │   │   ├── rustls-pki-types v1.11.0
+#    │   │   └── rustls-pki-types v1.11.0
+#    │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#but with it, it's all:
+#$ cargo tree|grep -i pki
+#│   │   └── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types)
+#├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#│       ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#    │   │   │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#    │   │   │   ├── rustls-webpki v0.103.1
+#    │   │   │   │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#    │   │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#    │   │   │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#    │   │   └── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+#    │   ├── rustls-pki-types v1.11.0 (/home/user/SOURCE/github/modified_forks/pki-types) (*)
+
+
 
 # a rustls that uses same pki-types patch.crates-io section from above and also enables pki-types' feature trace_drop_and_zeroize
 #rustls = { path = "/home/user/SOURCE/github/rustls/rustls" }

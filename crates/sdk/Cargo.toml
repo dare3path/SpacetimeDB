@@ -50,3 +50,9 @@ futures-channel.workspace = true
 
 # for tests
 spacetimedb-testing = { path = "../testing" }
+
+##no effect, if here or in root dir aka workspace Cargo.toml
+#[patch.crates-io]
+#rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" }
+#hyper-util = { path ="/home/user/SOURCE/my/channelclosed.reqwest/hyper-util" }
+
