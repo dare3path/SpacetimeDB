@@ -1,0 +1,64 @@
+#!/usr/bin/bash
+
+#info: https://github.com/clockworklabs/SpacetimeDB?tab=readme-ov-file#installing-from-source
+#typeish="release"
+if ! cargo fetch --offline; then
+  echo "!!! using internet"
+  set -e
+  cargo fetch
+  echo "!!!! re-run this to not use internet."
+  exit 0
+fi
+typeish="debug"
+if test "$typeish" == "release"; then
+  echo "building in release mode"
+  set -e
+  #time cargo build --locked --release -p spacetimedb-standalone -p spacetimedb-update -p spacetimedb-cli
+  #debug
+  time cargo build --locked --release -p spacetimedb-standalone -p spacetimedb-update -p spacetimedb-cli
+  #time cargo build --release -p spacetimedb-standalone -p spacetimedb-update -p spacetimedb-cli
+  set +e
+  outdir="./target/release/"
+else
+  echo "building with debug/dev profile"
+  set -e
+  #time cargo build -p spacetimedb-standalone
+  #time cargo build --locked -p spacetimedb-standalone
+  #time cargo build -p spacetimedb-cli
+  #time cargo build --locked -p spacetimedb-cli
+  time cargo build --locked -p spacetimedb-standalone -p spacetimedb-update -p spacetimedb-cli
+  #time cargo build -p spacetimedb-standalone -p spacetimedb-update -p spacetimedb-cli ; echo "$(tput setab 1)undo me in $0$(tput sgr0)"
+  set +e
+  outdir="./target/debug/"
+fi
+# Create directories
+mkdir -p ~/.local/bin
+export STDB_VERSION="$(${outdir}/spacetimedb-cli --version | sed -n 's/.*spacetimedb tool version \([0-9.]*\);.*/\1/p')"
+mkdir -p ~/.local/share/spacetime/bin/$STDB_VERSION
+
+on_err() {
+  echo "$(tput setaf 1)Failed$(tput sgr0)"
+}
+trap on_err ERR
+set -e
+# Install the update binary
+cp ${outdir}/spacetimedb-cli ~/.local/share/spacetime/bin/$STDB_VERSION
+cp ${outdir}/spacetimedb-standalone ~/.local/share/spacetime/bin/$STDB_VERSION
+cp ${outdir}/spacetimedb-update ~/.local/bin/spacetime
+
+spacetime version list
+spacetime version use "$STDB_VERSION"
+#spacetime version
+ls -la ~/.local/share/spacetime/bin/current
+set +e
+
+# Check if $HOME/.local/bin is in the PATH
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+    echo "$HOME/.local/bin is not in your PATH."
+    echo "You can add it by running:"
+    #echo "export PATH=\"\$HOME/.local/bin:\$PATH\""
+    #echo 'export PATH="$HOME/.local/bin:$PATH"'
+    echo 'export PATH="$PATH:$HOME/.local/bin"'
+fi
+
+echo "$(tput setaf 2)all done$(tput sgr0)"
