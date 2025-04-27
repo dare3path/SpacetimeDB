@@ -419,5 +419,5 @@ rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" 
 #patched to not obscure connection errors behind ChannelClosed:
 hyper-util = { path ="/home/user/SOURCE/my/channelclosed.reqwest/hyper-util" }
 
-#The current branch(TLS+mTLS) which added these changes to spacetimedb is also available as patch in: https://github.com/dare3path/spacetimedb-tls-patch
+#The current branch(TLS+mTLS) which added these changes to spacetimedb is also available as patch in: https://github.com/dare3path/spacetimedb-tls-patch  and if you want to use quickstart-chat example (client+server) with it, you might want to look at repo: https://github.com/dare3path/quickstart-chat
 
