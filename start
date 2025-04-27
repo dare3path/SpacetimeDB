@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 
-echo "!!!! starts the installed/copied spacetimedb exe, not the one that's built in the repo!"
+#XXX: use(with this) the example client/server scripts from: https://github.com/dare3path/quickstart-chat
+echo "This starts the standalone spacetimedb server, using the 'spacetimedb' executable that's been installed (not the one build inside the repo)"
 export RUST_LOG="spacetimedb=debug,spacetimedb_client_api=debug,spacetimedb_lib=debug,spacetimedb_standalone=debug,spacetimedb_commitlog=info,spacetimedb_durability=info,axum::rejection=debug"
 export RUST_BACKTRACE=1
 #time spacetime start --ssl --cert cert.pem --key key.pem
