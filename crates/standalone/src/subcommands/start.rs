@@ -155,21 +155,6 @@ const _: () = {
     assert_zeroize::<PrivatePkcs8KeyDer<'static>>();
     assert_zeroize::<PrivateKeyDer<'static>>();
 };
-#[test]
-fn test_zeroize_bounds() {
-    fn assert_zeroize<T: zeroize::Zeroize + zeroize::ZeroizeOnDrop>(_t: T) {}
-    // Use a dummy type to test the bound
-    let wtw=PrivatePkcs8KeyDer::from_vec(vec![1, 2, 3]);
-    let dummy_key = PrivateKeyDer::Pkcs8(wtw);
-    assert_zeroize(wtw);
-    assert_zeroize(dummy_key);
-}
-//#[test]
-//fn test_zeroize_private_key() {
-//    let mut key = PrivatePkcs8KeyDer(vec![1, 2, 3]);
-//    key.zeroize(); // Should compile if Zeroize is implemented
-//    assert_eq!(key.0, vec![0, 0, 0]); // Verify zeroization
-//}
 
 /// Loads a private key from a PEM file.
 async fn load_private_key(file_path: &Path) -> anyhow::Result<PrivateKeyDer<'static>> {
