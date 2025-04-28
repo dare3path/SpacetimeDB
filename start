@@ -5,11 +5,14 @@ echo "This starts the standalone spacetimedb server, using the 'spacetimedb' exe
 export RUST_LOG="spacetimedb=debug,spacetimedb_client_api=debug,spacetimedb_lib=debug,spacetimedb_standalone=debug,spacetimedb_commitlog=info,spacetimedb_durability=info,axum::rejection=debug"
 export RUST_BACKTRACE=1
 #time spacetime start --ssl --cert cert.pem --key key.pem
-time spacetime start --edition standalone --listen-addr 127.1.2.3:6543 --ssl --cert ../CA/server.crt --key ../CA/server.key
+#time spacetime start --edition standalone --listen-addr 127.1.2.3:6543 --ssl --cert ../spacetimedb-cert-gen/server.crt --key ../spacetimedb-cert-gen/server.key
+
+#mTLS:
+time spacetime start --edition standalone --listen-addr 127.1.2.3:6543 --ssl --cert ../spacetimedb-cert-gen/server.crt --key ../spacetimedb-cert-gen/server.key --client-CA-cert ../spacetimedb-cert-gen/ca4clients.crt --client-no-trust-system-root-store
 #listens as HTTP, not HTTPS:
 #time spacetime start --edition standalone --listen-addr 127.1.2.3:6543
 
 #old:
 #time spacetime start --edition standalone --listen-addr 127.0.0.1:3001 #this is HTTP
-#time spacetime start --edition standalone --listen-addr 127.0.0.1:3001  --ssl --cert ../CA/server.crt --key ../CA/server.key #this is HTTPS
+#time spacetime start --edition standalone --listen-addr 127.0.0.1:3001  --ssl --cert ../spacetimedb-cert-gen/server.crt --key ../spacetimedb-cert-gen/server.key #this is HTTPS
 
