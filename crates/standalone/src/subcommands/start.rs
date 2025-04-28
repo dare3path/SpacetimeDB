@@ -450,13 +450,14 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
         // Configure client authentication (mTLS)
         // FIXME: check if this 'danger' thing is as good as using
         // crate::ConfigBuilder::with_client_auth_cert and .with_no_client_auth
-        let client_auth: Arc<dyn rustls::server::danger::ClientCertVerifier> = if args.get_one::<PathBuf>("client-trust-cert").is_some() && trust_system {
-            eprintln!("Trusting system root store for verifying client certs.");
+        let client_auth: Arc<dyn rustls::server::danger::ClientCertVerifier> = if args.get_one::<PathBuf>("client-trust-cert").is_some() {
+            eprintln!("Using mTLS");
+            // these roots here may just be the cert we specified without system root store's certs
             rustls::server::WebPkiClientVerifier::builder(roots.into()) //Arc::new(roots))
                 .build()
                 .map_err(|e| anyhow::anyhow!("Failed to build client verifier: {}", e))?
         } else {
-            eprintln!("Not trusting system root store for verifying client certs.");
+            eprintln!("Not using mTLS.");
             rustls::server::WebPkiClientVerifier::no_client_auth()
         };
 
@@ -476,7 +477,7 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
         let tls_config = axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(config));
 
         log::info!(
-            "Starting SpacetimeDB with SSL on {}.",
+            "Starting SpacetimeDB with TLSv1.3(only) on {}.",
             addr,
         );
 //        axum_server::bind_rustls(addr, tls_config)
