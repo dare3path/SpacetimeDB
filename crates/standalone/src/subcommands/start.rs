@@ -154,6 +154,7 @@ const fn assert_zeroize<T: zeroize::Zeroize + zeroize::ZeroizeOnDrop>() {}
 const _: () = {
     assert_zeroize::<PrivatePkcs8KeyDer<'static>>();
     assert_zeroize::<PrivateKeyDer<'static>>();
+    assert_zeroize::<ring::signature::EcdsaKeyPair>();
 };
 
 /// Loads a private key from a PEM file.
@@ -447,6 +448,14 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
         };
 
         // Create ServerConfig with secure settings
+        /*  zeroize: in rustls:
+            PR #1492 adds zeroization for session secrets and TLS keys, improving security for non-key material.
+            Private keys are still passed to ring, which doesn’t zeroize, so the risk remains for your use case.
+           ring:
+            No zeroization for EcdsaKeyPair, pkcs8::Document, or Seed
+            Relies on the global allocator, which doesn’t guarantee memory zeroing.
+            Patching ring to add Zeroize is necessary for private key sanitization.
+        */
         let config=
             rustls::ServerConfig::builder_with_protocol_versions(&[
                 &rustls::version::TLS13,
@@ -459,6 +468,7 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
             .map_err(|e| anyhow::anyhow!("Failed to set certificates from files pub:'{}', priv:'{}', err: {}", cert_path.display(), key_path.display(), e))?;
 
         // Use axum_server with custom config
+        // zeroize: Safe, as it only holds an Arc<rustls::ServerConfig> and delegates to rustls for key handling.
         let tls_config = axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(config));
 
         log::info!(
