@@ -378,8 +378,10 @@ features = [
 
 #Patched to zeroize on drop(good for us):
 rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" }
+#XXX: if you're not me, you'll want this instead (or clone this locally in a path and change the path above to reflect where u've cloned it):
+#rustls-pki-types = { git = "https://github.com/dare3path/pki-types", branch="zeroize_on_drop" }
 #^ it's indirectly used though.
-#Without this here in patch section(ie. in case i used path= directly in the deps above, but none here in patch section), then not all deps will use it, like:
+#Without this here in patch section(ie. in case i used path= directly in the [dependencies] section above, but none here(no patched crate mentioned here) in patch section), then not all deps will use it, like:
 #/home/user/SOURCE/SpacetimeDB
 #$ cargo tree|grep -i pki
 #│   │   └── rustls-pki-types v1.11.0
@@ -414,13 +416,16 @@ rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" 
 ##...
 ## ppatch.crates-io]
 ## rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" } #patched with ./zeroize_on_drop.patch
-#XXX: this ^ (rustls hack) isn't needed if using the above inclusion of rustls-pki-types as dep here and .workspace=true in any Cargo.toml that has deps that use it.
+#this ^ (rustls hack) isn't needed if using the above inclusion of rustls-pki-types as dep here and .workspace=true in any Cargo.toml that has deps that use it.
 
 #patched to not obscure connection errors behind ChannelClosed:
-hyper-util = { path ="/home/user/SOURCE/my/channelclosed.reqwest/hyper-util" }
+hyper-util = { path="/home/user/SOURCE/github/modified_forks/hyper-util" }
+#XXX: if you're not me, you'll want this instead (or clone this locally in a path and change the path above to reflect where u've cloned it):
+#hyper-util = { git="https://github.com/dare3path/hyper-util", branch="fix_ChannelClosed_race" }
 
 #The current branch(TLS+mTLS) which added these changes to spacetimedb is also available as patch in: https://github.com/dare3path/spacetimedb-tls-patch  and if you want to use quickstart-chat example (client+server) with it, you might want to look at repo: https://github.com/dare3path/quickstart-chat
 
 # patched to zeroize private keys on drop:
-ring = { path = "/home/user/SOURCE/github/ring" }
-
+ring = { path = "/home/user/SOURCE/github/modified_forks/ring" }
+#XXX: if you're not me, you'll want this instead (or clone this locally in a path and change the path above to reflect where u've cloned it):
+#ring = { git="https://github.com/dare3path/ring", branch="zeroize_on_drop" }
