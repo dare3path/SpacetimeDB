@@ -409,8 +409,11 @@ rustls-pki-types = { path = "/home/user/SOURCE/github/modified_forks/pki-types" 
 
 
 
+#XXX: can comment out this 'rustls' patch line, as it's not needed, even tho it's brought up to date with its modded deps(ring, rcgen)
 # a rustls that uses same pki-types patch.crates-io section from above and also enables pki-types' feature trace_drop_and_zeroize
-#rustls = { path = "/home/user/SOURCE/github/rustls/rustls" }
+rustls = { path = "/home/user/SOURCE/github/modified_forks/rustls/rustls" }
+#XXX: if you're not me, you'll want this instead (or clone this locally in a path and change the path above to reflect where u've cloned it):
+#rustls = { git = "fixes_due_to_Drop_impls_in_dep_crates", branch="fixes_due_to_Drop_impls_in_dep_crates" }
 #so rustls's Cargo.toml is modded to look like this:
 ## pki-types = { package = "rustls-pki-types", version = "1.11", features = ["alloc","trace_drop_and_zeroize"] }
 ##...
