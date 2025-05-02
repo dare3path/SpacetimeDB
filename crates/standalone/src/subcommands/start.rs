@@ -155,6 +155,7 @@ const _: () = {
     assert_zeroize::<PrivatePkcs8KeyDer<'static>>();
     assert_zeroize::<PrivateKeyDer<'static>>();
     assert_zeroize::<ring::signature::EcdsaKeyPair>();
+    assert_zeroize::<ring::signature::RsaKeyPair>();
 };
 
 /// Loads a private key from a PEM file.
@@ -452,7 +453,7 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
             PR #1492 adds zeroization for session secrets and TLS keys, improving security for non-key material.
             Private keys are still passed to ring, which doesn’t zeroize, so the risk remains for your use case.
            ring:
-            No zeroization for EcdsaKeyPair, pkcs8::Document, or Seed
+            No zeroization for RsaKeyPair, EcdsaKeyPair, pkcs8::Document, or Seed
             Relies on the global allocator, which doesn’t guarantee memory zeroing.
             Patching ring to add Zeroize is necessary for private key sanitization.
         */
