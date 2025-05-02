@@ -154,8 +154,9 @@ const fn assert_zeroize<T: zeroize::Zeroize + zeroize::ZeroizeOnDrop>() {}
 const _: () = {
     assert_zeroize::<PrivatePkcs8KeyDer<'static>>();
     assert_zeroize::<PrivateKeyDer<'static>>();
-    assert_zeroize::<ring::signature::EcdsaKeyPair>();
     assert_zeroize::<ring::signature::RsaKeyPair>();
+    assert_zeroize::<ring::signature::EcdsaKeyPair>();
+    assert_zeroize::<ring::signature::Ed25519KeyPair>();
 };
 
 /// Loads a private key from a PEM file.
