@@ -20,6 +20,7 @@ use crate::sql::parse_req;
 use crate::util::UNSTABLE_WARNING;
 use crate::Config;
 use std::path::{Path, PathBuf};
+use spacetimedb_lib::MAX_CERT_BUNDLE_SIZE;
 
 pub fn cli() -> clap::Command {
     clap::Command::new("subscribe")
@@ -202,7 +203,7 @@ pub async fn exec(config: Config, args: &ArgMatches) -> Result<(), anyhow::Error
         }
 
         if let Some(cert_path) = trust_server_cert_path {
-            let cert_data = spacetimedb_lib::read_file_limited(cert_path)
+            let cert_data = spacetimedb_lib::read_file_limited(cert_path, MAX_CERT_BUNDLE_SIZE)
                 .await
                 .context(format!("Failed to read cert file: {}", cert_path.display()))?;
             let certs = rustls_pemfile::certs(&mut std::io::Cursor::new(cert_data))
@@ -229,10 +230,10 @@ pub async fn exec(config: Config, args: &ArgMatches) -> Result<(), anyhow::Error
             let key_path = client_key_path.ok_or_else(|| {
                 anyhow::anyhow!("--client-key is required with --client-cert")
             })?;
-            let cert_data = spacetimedb_lib::read_file_limited(cert_path)
+            let cert_data = spacetimedb_lib::read_file_limited(cert_path, MAX_CERT_BUNDLE_SIZE)
                 .await
                 .context(format!("Failed to read client cert: {}", cert_path.display()))?;
-            let key_data = spacetimedb_lib::read_file_limited(key_path)
+            let key_data = spacetimedb_lib::read_file_limited(key_path, MAX_CERT_BUNDLE_SIZE)
                 .await
                 .context(format!("Failed to read client key: {}", key_path.display()))?;
             let identity = native_tls::Identity::from_pkcs8(&cert_data, &key_data).context(format!(

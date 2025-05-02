@@ -61,6 +61,7 @@ rustls-pki-types.workspace=true #needed here, to enable its 'trace_drop_and_zero
 # For the 'proptest' feature.
 proptest = { workspace = true, optional = true }
 proptest-derive = { workspace = true, optional = true }
+zeroize.workspace=true
 
 [dev-dependencies]
 spacetimedb-sats = { path = "../sats", features = ["test"] }
@@ -72,6 +73,7 @@ ron.workspace = true
 # Also as dev-dependencies for use in _this_ crate's tests.
 proptest.workspace = true
 proptest-derive.workspace = true
+tempfile.workspace=true
 
 ##no effect if here:
 #[patch.crates-io]

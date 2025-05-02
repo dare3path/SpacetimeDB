@@ -20,6 +20,8 @@ use spacetimedb_paths::cli::{PrivKeyPath, PubKeyPath};
 use spacetimedb_paths::server::ServerDataDir;
 
 pub use spacetimedb_lib::read_file_limited;
+pub use spacetimedb_lib::MAX_CERT_BUNDLE_SIZE;
+pub use spacetimedb_lib::MAX_KEY_FILE_SIZE;
 
 pub fn cli() -> clap::Command {
     clap::Command::new("start")
@@ -121,7 +123,7 @@ pub fn cli() -> clap::Command {
 
 /// Loads certificates from a PEM file.
 async fn load_certs(file_path: &Path, expected_num: Option<usize>) -> anyhow::Result<Vec<CertificateDer<'static>>> {
-    let data = read_file_limited(file_path).await?;
+    let data = read_file_limited(file_path, MAX_CERT_BUNDLE_SIZE).await?;
     let certs: Vec<CertificateDer<'static>> = rustls_pemfile::certs(&mut std::io::Cursor::new(data))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| anyhow::anyhow!("Failed to parse certificates from {}: {:?}", file_path.display(), e))?;
@@ -161,31 +163,21 @@ const _: () = {
 
 /// Loads a private key from a PEM file.
 async fn load_private_key(file_path: &Path) -> anyhow::Result<PrivateKeyDer<'static>> {
-//    fn assert_zeroize<T: Zeroize>() {}
-//    assert_zeroize::<PrivatePkcs8KeyDer<'static>>(); // Fails if Zeroize not implemented
-//    assert_zeroize::<PrivateKeyDer<'static>>();
 
-    let mut data = read_file_limited(file_path).await?;
+    let mut data = read_file_limited(file_path, MAX_KEY_FILE_SIZE).await?;
     let result = {
         let mut cursor = std::io::Cursor::new(&data); // Borrow data
+        assert_zeroize::<PrivatePkcs8KeyDer<'static>>(); // Fails if Zeroize not implemented
         let mut keys: Vec<PrivatePkcs8KeyDer<'static>> = rustls_pemfile::pkcs8_private_keys(
             &mut cursor)
-//            &mut std::io::Cursor::new(data))
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| anyhow::anyhow!("Failed to parse private keys from {}: {:?}", file_path.display(), e))?;
-        //let result = 
         match keys.len() {
             0 => Err(anyhow::anyhow!("No private key found in file {}", file_path.display())),
             //1 => Ok(PrivateKeyDer::Pkcs8(keys.into_iter().next().unwrap())),
             1 => Ok(PrivateKeyDer::Pkcs8(keys.pop().unwrap())),
             _ => Err(anyhow::anyhow!("Multiple private keys found in file {}; only one private key is expected.", file_path.display())),
         }
-        //;
-//        // Zeroize all keys in the vector (handles multiple keys case if logic changes)
-//        for key in keys.iter_mut() {
-//            key.0.zeroize();
-//        }
-//        result
     };
     data.zeroize();
     result

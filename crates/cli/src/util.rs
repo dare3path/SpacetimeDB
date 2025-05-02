@@ -13,6 +13,8 @@ use crate::login::{spacetimedb_login_force, DEFAULT_AUTH_HOST};
 pub use spacetimedb_lib::load_root_cert;
 pub use spacetimedb_lib::{read_file_limited, TrustCertError, ClientCertError, ClientKeyError};
 pub use spacetimedb_lib::map_request_error;
+pub use spacetimedb_lib::MAX_CERT_BUNDLE_SIZE;
+pub use spacetimedb_lib::MAX_KEY_FILE_SIZE;
 
 pub const UNSTABLE_WARNING: &str = "WARNING: This command is UNSTABLE and subject to breaking changes.";
 
@@ -148,7 +150,7 @@ pub async fn configure_tls(
 
     // Load trust certificates
     if let Some(path) = trust_server_cert_path {
-        let cert_data = read_file_limited(path).await
+        let cert_data = read_file_limited(path, MAX_CERT_BUNDLE_SIZE).await
             //.context(format!("loading trust cert file: {}", path.display()))
             .map_err(|e| anyhow::Error::new(TrustCertError::new(path, e)))?;
         let certs = rustls_pemfile::certs(&mut std::io::Cursor::new(cert_data))
@@ -201,10 +203,10 @@ pub async fn configure_tls(
     if let Some(cert_path) = client_cert_path {
         //FIXME: clap ensures this, so if this is failing it's a different reason?:
         let key_path = client_key_path.ok_or_else(|| anyhow!("--client-key is required with --client-cert"))?;
-        let cert_data = read_file_limited(cert_path).await
+        let cert_data = read_file_limited(cert_path, MAX_CERT_BUNDLE_SIZE).await
             .map_err(|e| anyhow::Error::new(ClientCertError::new(cert_path,e)))
             ?;
-        let key_data = read_file_limited(key_path).await
+        let key_data = read_file_limited(key_path, MAX_KEY_FILE_SIZE).await
             .map_err(|e| anyhow::Error::new(ClientKeyError::new(key_path,e)))
             ?;
         //let identity = reqwest::Identity::from_pkcs8_pem(&[&cert_data[..], &key_data[..]].concat())
