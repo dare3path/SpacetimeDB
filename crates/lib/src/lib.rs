@@ -950,35 +950,42 @@ non_wasm! {
                     if let Some(ssl_err) = io_err.downcast_ref::<std::io::Error>() {
                         if let Some(openssl_err) = ssl_err.get_ref() {
                             if let Some(ssl_error) = openssl_err.downcast_ref::<openssl::ssl::Error>() {
-                                if ssl_error
-                                    .ssl_error()
-                                        .map(|stack: &openssl::error::ErrorStack| {
-                                            stack
-                                                .errors()
-                                                .iter()
-                                                .any(|e| e.reason() == Some("tlsv13 alert certificate required"))
-                                        })
-                                .unwrap_or(false)
-                                {
-                                    let msg = (
-                                        if client_cert_path.is_none() || client_key_path.is_none() {
-                                            "You didn't pass the required client certificate(yours) for mTLS, use --client-cert and --client-key 🔒"
-                                        } else {
-                                            "TLS handshake failed: server requires a valid client certificate(yours) for mTLS 🔒"
-                                        },
-                                        3,
-                                    );
-                                    if msg.1 > max_specificity {
-                                        //last_message = msg.0;
-                                        set_string!(last_message, msg.0);
-                                        max_specificity = msg.1;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                                // BEGIN: Refactored OpenSSL error stack iteration to check multiple reasons
+                                if let Some(stack) = ssl_error.ssl_error() {
+                                    for e in stack.errors() {
+                                        if e.reason() == Some("tlsv13 alert certificate required") {
+                                            let msg = (
+                                                if client_cert_path.is_none() || client_key_path.is_none() {
+                                                    "You didn't pass the required client certificate(yours) for mTLS, use --client-cert and --client-key 🔒"
+                                                } else {
+                                                    "TLS handshake failed: server requires a valid client certificate(yours) for mTLS 🔒"
+                                                },
+                                                3,
+                                            );
+                                            if msg.1 > max_specificity {
+                                                set_string!(last_message, msg.0);
+                                                max_specificity = msg.1;
+                                            }
+                                        }
+                                        if e.reason() == Some("tlsv1 alert unknown ca") {
+                                            assert!(client_cert_path.is_some() && client_key_path.is_some(),"dev error, this should be unreachable: TLS handshake failed: server requires a client certificate for mTLS, but none was provided. Use --client-cert and --client-key with valid files.");
+                                            let msg = (
+                                                    "TLS handshake failed: the server does not trust the CA that signed your client certificate. Ensure the server is configured with the correct CA certificate via --client-trust-cert (the CA that signed your client1.crt, e.g., ca4clients.crt)."
+                                                ,
+                                                3,
+                                            );
+                                            if msg.1 > max_specificity {
+                                                set_string!(last_message, msg.0);
+                                                max_specificity = msg.1;
+                                            }
+                                        }//if
+                                    }//for
+                                }//if
+                            }//if
+                        }//if
+                    }//if
+                }//if
+            }//if
             // Check reqwest::Error
             else if let Some(reqwest_err) = err.downcast_ref::<reqwest::Error>() {
                 let msg = if reqwest_err.is_connect() {

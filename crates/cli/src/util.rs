@@ -151,14 +151,13 @@ pub async fn configure_tls(
     // Load trust certificates
     if let Some(path) = trust_server_cert_path {
         let cert_data = read_file_limited(path, MAX_CERT_BUNDLE_SIZE).await
-            //.context(format!("loading trust cert file: {}", path.display()))
             .map_err(|e| anyhow::Error::new(TrustCertError::new(path, e)))?;
         let certs = rustls_pemfile::certs(&mut std::io::Cursor::new(cert_data))
             .collect::<Result<Vec<_>, _>>()
-            .context(format!("parse trust certificate(s) from file: {}", path.display()))
+            .context(format!("parse trust certificate(s) from file: {}", display_path(path)))
             .map_err(|e| anyhow::Error::new(TrustCertError::new(path, e)))?;
         if certs.is_empty() {
-            return Err(anyhow::anyhow!("No valid trust certificate(s) in file: {}", path.display()));
+            return Err(anyhow::anyhow!("No valid trust certificate(s) in file: {}", display_path(path)));
         }
         use x509_parser::prelude::FromDer;
         use sha2::Digest;
@@ -179,7 +178,7 @@ pub async fn configure_tls(
 //            }
             // Parse and log cert details
             let (_, parsed) = x509_parser::prelude::X509Certificate::from_der(cert.as_ref())
-                .context(format!("parse a trust cert from file: {}", path.display()))?;
+                .context(format!("parse a trust cert from file: {}", display_path(path)))?;
             let subject = parsed.subject().to_string();
             let issuer = parsed.issuer().to_string();
             let not_after = parsed.validity().not_after.to_string();
@@ -193,7 +192,7 @@ pub async fn configure_tls(
             let reqwest_cert = 
                 reqwest::Certificate::from_der(&cert)
                 //anyhow::anyhow!("foo")
-                .context(format!("convert trusted cert to reqwest format from file: {}", path.display()))
+                .context(format!("convert trusted cert to reqwest format from file: {}", display_path(path)))
                 .map_err(|e| anyhow::Error::new(TrustCertError::new(path, e)))?;
             client_builder = client_builder.add_root_certificate(reqwest_cert);
         }
@@ -210,13 +209,28 @@ pub async fn configure_tls(
             ?;
         //let identity = reqwest::Identity::from_pkcs8_pem(&[&cert_data[..], &key_data[..]].concat())
         let identity = reqwest::Identity::from_pkcs8_pem(&cert_data, &key_data)
-            .context(format!("parse client cert: {}, key: {}", cert_path.display(), key_path.display()))?;
+            .context(format!("parse client cert: {}, key: {}", display_path(cert_path), display_path(key_path)))?;
         client_builder = client_builder.identity(identity);
         key_data.zeroize();
     }
 
     Ok(client_builder)
 }
+
+pub const UNSPECIFIED_PATH:&str="<unspecified path, ie. None>";
+
+// Function to convert Option<&Path> to a displayable &str
+pub fn display_opt_path(path: Option<&Path>) -> &str {
+    // Match on the Option to handle Some and None cases
+    match path {
+        Some(p) => p.to_str().unwrap_or(UNSPECIFIED_PATH), // Convert Path to &str, fallback if invalid
+        None => UNSPECIFIED_PATH, // Return default for None
+    }
+}
+pub fn display_path(path: &Path) -> &str {
+    path.to_str().unwrap_or(UNSPECIFIED_PATH) // Convert Path to &str, fallback if invalid
+}
+
 
 pub fn build_client_with_context(
     builder: reqwest::ClientBuilder,
@@ -228,10 +242,10 @@ pub fn build_client_with_context(
     builder
         .build()
         .context(
-            format!("Failed to build client with trusted (server)cert(s) {:?}, with client cert(s): {:?}, with client private key: {:?}, while {} the system/root cert store.",
-            trust_server_cert_path,
-            client_cert_path,
-            client_key_path,
+            format!("Failed to build client with trusted (server)cert(s) {}, with client cert(s): {}, with client private key: {}, while {} the system/root cert store for verifying the server's cert.",
+            display_opt_path(trust_server_cert_path),
+            display_opt_path(client_cert_path),
+            display_opt_path(client_key_path),
             if trust_system { "trusting" } else { "NOT trusting" },
             )
         )
