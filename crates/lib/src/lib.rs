@@ -570,20 +570,20 @@ non_wasm! {
         }
 
         fn into_inner(mut self) -> Vec<u8> {
-//            let vec = std::mem::take(&mut self.0);
-////            std::mem::forget(self); // Prevent Drop from running by leaking memory ffs!
-////            //Without forget, Drop would run when self goes out of scope, zeroizing the now-empty self.0, which is unnecessary but harmless.
-//
-//            vec
-
             //std::mem::take<T>(dest: &mut T) -> T replaces the value at dest with a “default” value (for Vec<u8>, an empty Vec with zero capacity) and returns the original value.
             std::mem::take(&mut self.0)
             // Drop runs automatically, zeroizing the now-empty(and unallocated on heap) self.0 vec
         }
     }
 
+    impl zeroize::ZeroizeOnDrop for ZeroizingVec {} // Marker
     impl Drop for ZeroizingVec {
         fn drop(&mut self) {
+            if self.0.len() > 0 {
+                eprintln!("!!! Dropping ZeroizingVec after zeroize-ing it.");
+            } else {
+                eprintln!("!!! Dropping ZeroizingVec (empty)");
+            }
             self.0.zeroize();
         }
     }
@@ -602,8 +602,14 @@ non_wasm! {
         }
     }
 
+    impl zeroize::ZeroizeOnDrop for ZeroizingBuffer {} // Marker
     impl Drop for ZeroizingBuffer {
         fn drop(&mut self) {
+            if self.0.len() > 0 {
+                eprintln!("!!! Dropping ZeroizingBuffer after zeroize-ing it.");
+            } else {
+                eprintln!("!!! Dropping ZeroizingBuffer (empty)");
+            }
             self.0.zeroize();
         }
     }
@@ -619,91 +625,15 @@ non_wasm! {
         }
     }
 
-//    /// Asynchronously reads a file with a maximum size limit of usize::MAX (4G on 32bit arch)
-//    /// Files of 1 MiB or larger will fail; files under 1 MiB are allowed.
-//    /// This should avoid unresponsive system(DOS-ing) until OOM kicks in  if you do /dev/zero as the path.
-//    /// Uses a temporary buffer to read chunks, allowing detection of extra data without over-allocating data.
-//    /// All buffers (data and temporary) are zeroized on error or success to prevent sensitive data lingering in memory. Except on success, the returned data isn't zeroized, obviously.
-//    pub async fn read_file_limited(path: &std::path::Path) -> anyhow::Result<Vec<u8>> {
-//        //pub async fn read_file_limited(path: &std::path::Path, max_size: u64) -> anyhow::Result<Vec<u8>> {
-//        // if file is >= to this, fails!
-//        const MAX_SIZE: usize = 1_048_576; // 1 MiB
-//
-//        // it's explicitly opened as read only:
-//        let file: tokio::fs::File = tokio::fs::OpenOptions::new()
-//            .read(true)
-//            .write(false)
-//            .open(path)
-//            //let file = tokio::fs::File::open(path)//it's read-only by default!
-//            .await
-//            .context(format!("Failed to open file: {}", path.display()))?;
-//
-//        // This to avoid the reading/mem alloc for normal eg. non-/dev/zero files:
-//        let metadata = file
-//            .metadata()
-//            .await
-//            .context(format!("Failed to read metadata for {}", path.display()))?;
-//
-//        let f_len:usize = metadata.len()
-//            .try_into()
-//            .context(
-//                format!("File size way too big for file: {}", // it's > 4 GiB on 32-bit arch
-//                    path.display())
-//            )?;
-//        if f_len >= MAX_SIZE {
-//            return Err(anyhow::anyhow!(
-//                    "File {} exceeds maximum size of {} bytes",
-//                    path.display(),
-//                    MAX_SIZE-1
-//            ));
-//        }
-//
-//        // don't read more than MAX_SIZE
-//        // blocks like /dev/zero are 0 bytes file len, thus then pick MAX_SIZE instead.
-//        let max_read_len:usize = smallest_non_zero(f_len, MAX_SIZE);
-//
-//        //let mut reader = tokio::io::BufReader::with_capacity(MAX_SIZE as usize, file).take(MAX_SIZE);
-//
-//        // No Stack Buffer: tokio::fs::File uses kernel buffers, which are less likely to persist in user-space memory compared to BufReader’s stack buffer.
-//        // "No Buffer: read_to_end writes directly into data, bypassing user-space buffers. The OS kernel may use its own buffers, but these are managed by the kernel and not accessible to your process." - grok 3
-//        // "The tokio source for read_to_end (in tokio::io::util::async_read_ext) shows it reads in
-//        // chunks (default 64 KiB) directly into the provided Vec"
-//        assert!(max_read_len > 0); // These are assert!, not debug_assert!, so they always execute, even in release builds, regardless of debug-assertions.
-//        assert!(MAX_SIZE > 1);
-//        let mut reader = file.take(max_read_len as u64);
-//        //allocs 1MiB for any file size, once.
-//        //XXX: this is overkill for normal certs which are like 2KiB, or CA cert chains 250KiB+-
-//        //if memory's a problem, just Vec::new() here instead, or with 2048 capacity.
-//        let mut data = Vec::with_capacity(max_read_len);
-//        // "This method is allowed to allocate for more elements than capacity"
-//        assert!(data.capacity() >= max_read_len);
-//
-//        reader
-//            .read_to_end(&mut data)
-//            .await
-//            .context(format!("Failed to read(happens after open) file: {}", path.display()))?;
-//
-//        if reader.limit() == 0 {
-//            return Err(anyhow::anyhow!(
-//                    "Read(already) >= {} bytes from file {}, exceeding maximum accepted size of {} bytes.",
-//                    max_read_len,
-//                    path.display(),
-//                    max_read_len-1
-//            ));
-//        }
-//
-//        Ok(data)
-//    }
-
-
     /// Asynchronously reads a file with a maximum size limit specified by max_size.
     /// If max_size is 0, no limit is applied (up to usize::MAX).
     /// Files up to and including max_size bytes are allowed; larger files will fail.
     /// Uses a temporary buffer to read chunks, allowing detection of extra data without over-allocating data.
-    /// All internal buffers (which are temporary) are zeroized(on Drop) on error or success to prevent sensitive data lingering in memory.
-    /// The returned data isn't zeroized, it's left to the caller to zeroize!
+    /// The internal buffer (which is temporary) is zeroized(on Drop) on error or success to prevent sensitive data lingering in memory.
+    /// The returned data isn't zeroized, it's left for the caller to zeroize!
     pub async fn read_file_limited(path: &Path, max_size: usize) -> anyhow::Result<Vec<u8>> {
         let max_size = if max_size == 0 { usize::MAX } else { max_size };
+        debug_assert!(max_size > 0);
 
         let mut file: tokio::fs::File = tokio::fs::OpenOptions::new()
             .read(true)
@@ -712,6 +642,7 @@ non_wasm! {
             .await
             .context(format!("Failed to open file: {}", path.display()))?;
 
+        // This to avoid the reading/mem alloc-ing for normal eg. non-/dev/zero files:
         let metadata = file
             .metadata()
             .await
@@ -728,24 +659,27 @@ non_wasm! {
 
         if f_len > max_size {
             return Err(anyhow::anyhow!(
-                    "File {} is {} bytes, which exceeds maximum size of {} bytes",
+                    "File {} is {} bytes, which exceeds expected-maximum size of {} bytes",
                     path.display(),
                     f_len,
                     max_size
             ));
         }
 
+        // blocks like /dev/zero are 0 bytes file len, thus then pick max_size instead.
         let max_read_len: usize = smallest_non_zero(f_len, max_size);
+        // These are assert!, not debug_assert!, so they always execute, even in release builds, regardless of debug-assertions.
         assert!(max_read_len > 0, "max_read_len must be positive");
 
         let mut data = ZeroizingVec::new(max_read_len);
         let mut buffer = ZeroizingBuffer::new();
-        let buf_slice = buffer.as_mut_slice();
+        let buf_slice:&mut [u8] = buffer.as_mut_slice();
+        let buf_slice_len:usize=buf_slice.len();
         let mut total_read: usize = 0;
 
         // Read chunks into buffer, copy to data up to max_read_len
         while total_read < max_read_len {
-            let to_read = (max_read_len - total_read).min(buf_slice.len());
+            let to_read = (max_read_len - total_read).min(buf_slice_len);
             let n = file
                 .read(&mut buf_slice[..to_read])
                 .await
@@ -775,8 +709,10 @@ non_wasm! {
         }
 
         // Buffer is zeroized automatically on drop (success or error)
+        // but 'data' isn't, well the Vec<u8> we return is calller's problem to zeroize now.
         Ok(data.into_inner())
     }
+
     #[macro_export]
     macro_rules! set_string {
         ($s:expr, $new:expr) => {
@@ -1131,7 +1067,6 @@ non_wasm! {
         use tokio::fs::File;
         use tokio::io::AsyncWriteExt;
 
-        const MAX_SIZE: usize = 1_048_576; // 1 MiB, FIXME: rename to below in all places
         const TEST_MAX_SIZE: usize = 1_048_576; // 1 MiB
 
         // Tests for MAX_BUF_SIZE multiples (1x, 2x, 3x) with -1, 0, +1 bytes
@@ -1237,26 +1172,26 @@ non_wasm! {
 
         #[tokio::test]
         async fn test_max_allowed_size() {
-            // Test a file of 1,048,575 bytes (MAX_SIZE - 1, should succeed)
-            let temp_file = create_test_file(MAX_SIZE - 1)
+            // Test a file of 1,048,575 bytes (TEST_MAX_SIZE - 1, should succeed)
+            let temp_file = create_test_file(TEST_MAX_SIZE - 1)
                 .await
                 .expect("Failed to create test file");
             let result = read_file_limited(temp_file.path(), TEST_MAX_SIZE).await;
-            assert!(result.is_ok(), "Expected success for {} bytes, got {:?}", MAX_SIZE - 1, result);
+            assert!(result.is_ok(), "Expected success for {} bytes, got {:?}", TEST_MAX_SIZE - 1, result);
             let data = result.unwrap();
-            assert_eq!(data.len(), MAX_SIZE - 1, "Expected {} bytes, got {}", MAX_SIZE - 1, data.len());
+            assert_eq!(data.len(), TEST_MAX_SIZE - 1, "Expected {} bytes, got {}", TEST_MAX_SIZE - 1, data.len());
         }
 
         #[tokio::test]
         async fn test_exactly_max_size() {
-            // Test a file of 1,048,576 bytes (MAX_SIZE, should succeed)
-            let temp_file = create_test_file(MAX_SIZE)
+            // Test a file of 1,048,576 bytes (TEST_MAX_SIZE, should succeed)
+            let temp_file = create_test_file(TEST_MAX_SIZE)
                 .await
                 .expect("Failed to create test file");
             let result = read_file_limited(temp_file.path(), TEST_MAX_SIZE).await;
-            assert!(result.is_ok(), "Expected success for {} bytes, got {:?}", MAX_SIZE, result);
+            assert!(result.is_ok(), "Expected success for {} bytes, got {:?}", TEST_MAX_SIZE, result);
             let data = result.unwrap();
-            assert_eq!(data.len(), MAX_SIZE, "Expected {} bytes, got {}", MAX_SIZE, data.len());
+            assert_eq!(data.len(), TEST_MAX_SIZE, "Expected {} bytes, got {}", TEST_MAX_SIZE, data.len());
         }
 
 #[tokio::test]
@@ -1362,6 +1297,15 @@ non_wasm! {
             }
         }
 
+        use zeroize::ZeroizeOnDrop;
+        use super::{ZeroizingVec, ZeroizingBuffer};
+
+        #[test]
+        fn test_has_zeroize_on_drop() {
+            const fn assert_zeroize_on_drop<T: ZeroizeOnDrop>() {}
+            assert_zeroize_on_drop::<ZeroizingVec>();
+            assert_zeroize_on_drop::<ZeroizingBuffer>();
+        }
     }//mod tests
 
 } // end of non_wasm! macro call

@@ -21,6 +21,7 @@ use crate::util::UNSTABLE_WARNING;
 use crate::Config;
 use std::path::{Path, PathBuf};
 use spacetimedb_lib::MAX_CERT_BUNDLE_SIZE;
+use zeroize::Zeroize;
 
 pub fn cli() -> clap::Command {
     clap::Command::new("subscribe")
@@ -233,7 +234,7 @@ pub async fn exec(config: Config, args: &ArgMatches) -> Result<(), anyhow::Error
             let cert_data = spacetimedb_lib::read_file_limited(cert_path, MAX_CERT_BUNDLE_SIZE)
                 .await
                 .context(format!("Failed to read client cert: {}", cert_path.display()))?;
-            let key_data = spacetimedb_lib::read_file_limited(key_path, MAX_CERT_BUNDLE_SIZE)
+            let mut key_data = spacetimedb_lib::read_file_limited(key_path, MAX_CERT_BUNDLE_SIZE)
                 .await
                 .context(format!("Failed to read client key: {}", key_path.display()))?;
             let identity = native_tls::Identity::from_pkcs8(&cert_data, &key_data).context(format!(
@@ -241,6 +242,7 @@ pub async fn exec(config: Config, args: &ArgMatches) -> Result<(), anyhow::Error
                 cert_path.display()
             ))?;
             builder.identity(identity);
+            key_data.zeroize();
         }
 
         let tls_connector = builder.build().context("Failed to build TLS connector")?;

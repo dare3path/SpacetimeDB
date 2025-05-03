@@ -15,6 +15,7 @@ pub use spacetimedb_lib::{read_file_limited, TrustCertError, ClientCertError, Cl
 pub use spacetimedb_lib::map_request_error;
 pub use spacetimedb_lib::MAX_CERT_BUNDLE_SIZE;
 pub use spacetimedb_lib::MAX_KEY_FILE_SIZE;
+use zeroize::Zeroize;
 
 pub const UNSTABLE_WARNING: &str = "WARNING: This command is UNSTABLE and subject to breaking changes.";
 
@@ -206,13 +207,14 @@ pub async fn configure_tls(
         let cert_data = read_file_limited(cert_path, MAX_CERT_BUNDLE_SIZE).await
             .map_err(|e| anyhow::Error::new(ClientCertError::new(cert_path,e)))
             ?;
-        let key_data = read_file_limited(key_path, MAX_KEY_FILE_SIZE).await
+        let mut key_data = read_file_limited(key_path, MAX_KEY_FILE_SIZE).await
             .map_err(|e| anyhow::Error::new(ClientKeyError::new(key_path,e)))
             ?;
         //let identity = reqwest::Identity::from_pkcs8_pem(&[&cert_data[..], &key_data[..]].concat())
         let identity = reqwest::Identity::from_pkcs8_pem(&cert_data, &key_data)
             .context(format!("parse client cert: {}, key: {}", cert_path.display(), key_path.display()))?;
         client_builder = client_builder.identity(identity);
+        key_data.zeroize();
     }
 
     Ok(client_builder)

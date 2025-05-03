@@ -28,6 +28,7 @@ use tokio_tungstenite::{
 };
 
 use crate::metrics::CLIENT_METRICS;
+use zeroize::Zeroize;
 
 #[derive(Error, Debug, Clone)]
 pub enum UriError {
@@ -274,7 +275,7 @@ impl WsConnection {
 
             if let Some(cert_path) = trusted_cert {
                 // This is the server's self-signed cert or local CA's cert that signed the server's cert.
-                let cert_data = spacetimedb_lib::read_file_limited(cert_path)
+                let cert_data = spacetimedb_lib::read_file_limited(cert_path, spacetimedb_lib::MAX_CERT_BUNDLE_SIZE)
                     .await?;
                 //FIXME: fix this and 2 more below.
 //                    .map_err(|e| WsError::Tungstenite {
@@ -320,13 +321,13 @@ impl WsConnection {
                                 "--client-key is required with --client-cert",
                     ))),
                 })?;
-                let cert_data = spacetimedb_lib::read_file_limited(cert_path)
+                let cert_data = spacetimedb_lib::read_file_limited(cert_path, spacetimedb_lib::MAX_CERT_BUNDLE_SIZE)
                     .await?;
 //                    .map_err(|e| WsError::Tungstenite {
 //                        uri: uri.clone(),
 //                        source: Arc::new(tokio_tungstenite::tungstenite::Error::Io(e)),
 //                    })?;
-                let key_data = spacetimedb_lib::read_file_limited(key_path)
+                let mut key_data = spacetimedb_lib::read_file_limited(key_path, spacetimedb_lib::MAX_KEY_FILE_SIZE)
                     .await?;
 //                    .map_err(|e| WsError::Tungstenite {
 //                        uri: uri.clone(),
@@ -348,6 +349,7 @@ impl WsConnection {
                     ))),
                 })?;
                 builder.identity(identity);
+                key_data.zeroize();
             } //if
 
             let tls_connector = builder.build().map_err(|e| WsError::Tungstenite {

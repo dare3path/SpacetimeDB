@@ -40,6 +40,7 @@ clap.workspace=true
 rustls-pemfile.workspace = true
 #This pki-types crate is actually a dep of pemfile above, but we want a feature enabled, so:
 rustls-pki-types.workspace=true #needed here, to enable its 'trace_drop_and_zeroize' feature
+zeroize.workspace=true
 
 [dev-dependencies]
 # for quickstart-chat and cursive-chat examples
