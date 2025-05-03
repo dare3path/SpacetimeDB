@@ -6,7 +6,7 @@ use spacetimedb_sats::{impl_serialize, WithTypespace};
 use std::any::TypeId;
 use std::collections::{btree_map, BTreeMap};
 
-pub const TRACE_DROP_AND_ZEROIZE: bool = true;
+pub const TRACE_DROP_AND_ZEROIZE: bool = false;//TODO: make this depend on ring||pki-types' trace_drop_and_zeroize feature
 
 macro_rules! non_wasm {
     ($($item:item)*) => {
@@ -718,7 +718,7 @@ non_wasm! {
         }
 
         // Buffer is zeroized automatically on drop (success or error)
-        // but 'data' isn't, well the Vec<u8> we return is calller's problem to zeroize now.
+        // but 'data' isn't, well the Vec<u8> we return is caller's problem to zeroize now.
         Ok(data.into_inner())
     }
 
