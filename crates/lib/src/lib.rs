@@ -6,6 +6,8 @@ use spacetimedb_sats::{impl_serialize, WithTypespace};
 use std::any::TypeId;
 use std::collections::{btree_map, BTreeMap};
 
+pub const TRACE_DROP_AND_ZEROIZE: bool = true;
+
 macro_rules! non_wasm {
     ($($item:item)*) => {
         $(
@@ -578,10 +580,13 @@ non_wasm! {
     impl zeroize::ZeroizeOnDrop for ZeroizingVec {} // Marker
     impl Drop for ZeroizingVec {
         fn drop(&mut self) {
-            if self.0.len() > 0 {
-                eprintln!("!!! Dropping ZeroizingVec after zeroize-ing it.");
-            } else {
-                eprintln!("!!! Dropping ZeroizingVec (empty)");
+            //#[cfg(trace_drop_and_zeroize)] // set by ../build.rs if ring or pki-types have it set.
+            if TRACE_DROP_AND_ZEROIZE {
+                if self.0.len() > 0 {
+                    eprintln!("!!! Dropping ZeroizingVec after zeroize-ing it.");
+                } else {
+                    eprintln!("!!! Dropping ZeroizingVec (empty)");
+                }
             }
             self.0.zeroize();
         }
@@ -604,10 +609,15 @@ non_wasm! {
     impl zeroize::ZeroizeOnDrop for ZeroizingBuffer {} // Marker
     impl Drop for ZeroizingBuffer {
         fn drop(&mut self) {
-            if self.0.len() > 0 {
-                eprintln!("!!! Dropping ZeroizingBuffer after zeroize-ing it.");
-            } else {
-                eprintln!("!!! Dropping ZeroizingBuffer (empty)");
+            //#[cfg(feature = "trace_drop_and_zeroize")] // set by ../build.rs if ring or pki-types have it set.
+            //#[cfg(trace_drop_and_zeroize)] // set by ../build.rs if ring or pki-types have it set.
+            //XXX: can't really detect if ring(not in lib's Cargo.toml dep) or pki-types(it's in Cargo.toml) has trace_drop_and_zeroize feature since it's indirectly pulled by my_fork (unless I used my_fork=[] in pki-types or ring) but maybe it works via cargo metadata in build.rs, didn't try it. However, decided to use this const and toggle it by editing this source, if needed, ever.
+            if TRACE_DROP_AND_ZEROIZE {
+                if self.0.len() > 0 {
+                    eprintln!("!!! Dropping ZeroizingBuffer after zeroize-ing it.");
+                } else {
+                    eprintln!("!!! Dropping ZeroizingBuffer (empty)");
+                }
             }
             self.0.zeroize();
         }
