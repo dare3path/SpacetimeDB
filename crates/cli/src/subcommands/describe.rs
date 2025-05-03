@@ -114,6 +114,7 @@ pub async fn exec(config: Config, args: &ArgMatches) -> Result<(), anyhow::Error
         println!("{json}");
     } else {
         // TODO: human-readable API
+        unimplemented!();
     }
 
     Ok(())
