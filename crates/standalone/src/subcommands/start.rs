@@ -417,7 +417,7 @@ pub async fn exec(args: &ArgMatches) -> anyhow::Result<()> {
                     let serial = parsed.serial.to_string();
                     let fingerprint = format!("{:x}", Sha256::digest(cert.as_ref()));
                     log::info!(
-                        "Custom cert: subject={}, issuer={}, serial={}, expires={}, fingerprint={}",
+                        "Trusting client cert/CA (for mTLS): subject={}, issuer={}, serial={}, expires={}, fingerprint={}",
                         subject, issuer, serial, not_after, fingerprint
                     );
                 } else {
