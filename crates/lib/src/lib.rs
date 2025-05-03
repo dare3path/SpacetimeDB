@@ -468,8 +468,8 @@ non_wasm! {
             .action(clap::ArgAction::Set)
             .value_parser(clap::value_parser!(std::path::PathBuf))
             .required(false)
-            //        .requires("ssl")
-            .help("Path to the client’s certificate (PEM format) for authentication")
+            .requires("client-key")
+            .help("Path to the client’s certificate (PEM format) for authentication, this will be presented to the server that we(the client) are trying to connect to.")
     }
 
     //for the cli clients:
@@ -481,8 +481,7 @@ non_wasm! {
             .value_parser(clap::value_parser!(std::path::PathBuf))
             .required(false)
             .requires("client-cert")
-            //        .requires("ssl")
-            .help("Path to the client’s private key (PEM format) for authentication")
+            .help("Path to the client’s private key (PEM format) for authentication, this will be used our(client) outgoing connection to the server.")
     }
 
     //for cli clients, this is the default(to trust):

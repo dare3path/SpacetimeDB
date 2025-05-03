@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use anyhow::Context;
 use base64::{engine::general_purpose::STANDARD_NO_PAD as BASE_64_STD_NO_PAD, Engine as _};
 use reqwest::{RequestBuilder, Url};
@@ -202,8 +201,7 @@ pub async fn configure_tls(
 
     // Configure client authentication aka mTLS
     if let Some(cert_path) = client_cert_path {
-        //FIXME: clap ensures this, so if this is failing it's a different reason?:
-        let key_path = client_key_path.ok_or_else(|| anyhow!("--client-key is required with --client-cert"))?;
+        let key_path = client_key_path.context("clap ensures if --client-cert was used --client-key was too with a path, so reaching this is impossible?!")?;
         let cert_data = read_file_limited(cert_path, MAX_CERT_BUNDLE_SIZE).await
             .map_err(|e| anyhow::Error::new(ClientCertError::new(cert_path,e)))
             ?;
