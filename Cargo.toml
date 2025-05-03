@@ -229,7 +229,8 @@ rustls-pemfile = "2.2"
 #rustls = "0.23"
 rustls= { version="0.23", default-features = true, features=[ "ring" ] }
 native-tls = "0.2"  # Explicitly add for Connector::NativeTls
-ring = { version= "0.17.14", default-features = true, features = ["trace_drop_and_zeroize"] }  # explicitly add this for the CryptoProvider, even tho it's included transitively. +  we need the trace feature
+#XXX: using 'my_fork' feature ensures the current crate uses the dep from the fork and allows that fork to control any extra features like tracing.
+ring = { version= "0.17.14", default-features = true, features = ["my_fork"] }  # explicitly add this for the CryptoProvider, even tho it's included transitively. +  we need the trace feature
 ron = "0.8"
 rusqlite = { version = "0.29.0", features = ["bundled", "column_decltype"] }
 rust_decimal = { version = "1.29.1", features = ["db-tokio-postgres"] }
@@ -301,10 +302,8 @@ jemalloc_pprof = { version = "0.7", features = ["symbolize", "flamegraph"] }
 zstd-framed = { version = "0.1.1", features = ["tokio"] }
 
 
-#uncomment this to disable the feature: (and comment the next one)
-#rustls-pki-types = { version = "1.11" }
-#XXX: doing this here: (comment the above, uncomment this next)
-rustls-pki-types = { version = "1.11.0", features = ["trace_drop_and_zeroize"] }
+rustls-pki-types = { version = "1.11.0", features = ["my_fork"] }
+#XXX: using 'my_fork' feature ensures the current crate uses the dep from the fork and allows that fork to control any extra features like tracing.
 #rustls-pki-types = { path= "/home/user/SOURCE/github/modified_forks/pki-types", features = ["trace_drop_and_zeroize"] } #don't use this path= way, because it compiles external client/server projects but they're incomplete, unless u add the patch section to them too.
 #and then in things like ./crates/standalone/Cargo.toml doing:
 #rustls-pki-types.workspace=true
