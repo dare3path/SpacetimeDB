@@ -423,7 +423,7 @@ rustls = { path = "/home/user/SOURCE/github/modified_forks/rustls/rustls" }
 #patched to not obscure connection errors behind ChannelClosed:
 hyper-util = { path="/home/user/SOURCE/github/modified_forks/hyper-util" }
 #XXX: if you're not me, you'll want this instead (or clone this locally in a path and change the path above to reflect where u've cloned it):
-#hyper-util = { git="https://github.com/dare3path/hyper-util", branch="fix_ChannelClosed_race" }
+#hyper-util = { git="https://github.com/dare3path/hyper-util", branch="fix_ChannelClosed_race_NOT_in_PR" }
 
 #The current branch(TLS+mTLS) which added these changes to spacetimedb is also available as patch in: https://github.com/dare3path/spacetimedb-tls-patch  and if you want to use quickstart-chat example (client+server) with it, you might want to look at repo: https://github.com/dare3path/quickstart-chat
 
